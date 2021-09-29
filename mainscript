@@ -1,0 +1,38 @@
+// This source code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// © OnlineCryptoCollege
+
+//@version=4
+strategy(title = "BTC WAVE RIDER BOT", shorttitle = "OCC - BTC WAVE RIDER (4H)", overlay = true, precision = 10, max_bars_back = 200, initial_capital = 10000, 
+     currency = currency.USD, default_qty_type = strategy.percent_of_equity, calc_on_order_fills = true, calc_on_every_tick = false, default_qty_value = 100, commission_type = "percent", commission_value = 0.1)
+
+// === OPTIMIZED INPUTS ===
+emaLongEntry = 8
+smaLongExit = 15
+macdfilter = -3
+
+// === INPUT BOT START DATE ===
+fromMonth = input(defval = 1,    title = "Bot Start Month (UTC)",      type = input.integer, minval = 1, maxval = 12, confirm = true)
+fromDay   = input(defval = 1,    title = "Bot Start Day (UTC)",        type = input.integer, minval = 1, maxval = 31, confirm = true)
+fromYear  = input(defval = 2020, title = "Bot Start Year (UTC)",       type = input.integer, minval = 1970, confirm = true)
+
+// === TIME WINDOW ===
+start     = timestamp(fromYear, fromMonth, fromDay, 00, 00)           
+finish    = timestamp(2099, 12, 11, 23, 59)                             
+window()  => time >= start and time <= finish ? true : false          
+
+// === Filters ===
+[_,_, histLine] = macd(close, 12, 26, 9)
+hbWidth = (ema(high, emaLongEntry)) - (sma(low,smaLongExit))
+hbwPercent = (hbWidth / (sma(low,smaLongExit))) * 100
+
+// === Passing Timestamp ===
+timeSent = time
+
+// === LOGIC ===
+openAbove    = close > ema(high, emaLongEntry) and rsi(close,14) < 71 and hbwPercent > 0.7 and rsi(close,14) > 41 and low > sma(low,smaLongExit)
+crossUnder   = low < sma(low, smaLongExit)
+
+// === EXECUTION ===
+strategy.entry("SurfsUp", strategy.long, when = window() and openAbove and histLine > macdfilter, comment = "BUY", alert_message = "POTENTIAL WAVE INBOUND - TIME TO SURF?")     
+strategy.close("SurfsUp", when = window() and crossUnder, comment = "SELL", alert_message = "WAVE LOOKS TO BE DYING - TIME TO BAIL?")
+plot(timeSent, editable = false, display = display.none)
